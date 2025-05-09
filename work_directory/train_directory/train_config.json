@@ -1,0 +1,20 @@
+{
+    "data_information": {
+        "nori_images" : "work_directory/train_directory/data/rat_aging_kidney",
+        "layers" : {"protein":0, "lipid":1},
+        "sample_separator": "_MAP"
+
+    },
+    "output_information": {
+        "output_folder" : "work_directory/train_directory/outputs/rat_aging_kidney",
+        "task_name": "rat_9m_25m"
+
+    },
+    "models_settings": {
+        "tile_size":320,
+        "val_group_number":1,
+        "epoch_number":3,
+        "batch_size":8
+    }
+
+}
