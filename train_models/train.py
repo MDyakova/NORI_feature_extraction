@@ -54,7 +54,7 @@ if __name__ == "__main__":
     val_samples = make_validation_sets(class_samples, val_group_number)
 
     # Train models
-    for step, version in range(val_group_number):
+    for step, version in enumerate(range(len(val_samples))):
         model_name = f'{task_name}_models_v' + str(version)
         val_samples_step = val_samples[step]
 
