@@ -186,8 +186,8 @@ def copy_dataset(output_directory,
                                 columns=['model_name', 'folder',
                                          'sample_name',
                                          'set_type', 'image_name'])
-    dataset_info.to_csv(os.path.join(output_directory, task_name, model_name + '.csv'), index=None)
-
-
-
-
+    
+    tables_directory = os.path.join(output_directory, task_name, 'tables')
+    os.makedirs(tables_directory, exist_ok=True)
+    dataset_info.to_csv(os.path.join(tables_directory, model_name + '.csv'), index=None)
+    

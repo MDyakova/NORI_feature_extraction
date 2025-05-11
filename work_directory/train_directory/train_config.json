@@ -12,9 +12,9 @@
     },
     "models_settings": {
         "tile_size":320,
-        "val_group_number":1,
-        "epoch_number":3,
-        "batch_size":16
+        "val_group_number":10,
+        "epoch_number":20,
+        "batch_size":32
     }
 
 }

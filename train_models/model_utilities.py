@@ -7,6 +7,10 @@ import numpy as np
 from tifffile import TiffFile
 from PIL import Image
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+import seaborn as sns
 import random
 import shutil
 import torch
@@ -184,3 +188,50 @@ def train_model(output_directory,
     torch.save(saved_model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}.pth'))
 
     return saved_model
+
+def metrics(output_directory,
+            task_name):
+    """
+    Make box plots for F1 metrics
+    """
+    all_results = []
+    model_directory = os.path.join(output_directory, task_name, 'models')
+    with open(os.path.join(output_directory, task_name, 'models', f'report_CNN_{task_name}.txt')) as f:
+        results = f.read()
+    separator = '_v'.join(results.split('\n')[0].split('_v')[:-1])
+
+    for res in results.split(separator)[1:]:
+        res = res.split('\n')
+        folder_name = separator + res[0]
+        val_samples = res[1].split(' ')
+
+        for string in res[4:]:
+            string = string.strip()
+            if string == '':
+                break
+            class_name = string.split('      ')[0].strip()
+            class_f1 = float(string.split('      ')[3].strip())
+            all_results.append([task_name, class_name, class_f1])
+    all_results = pd.DataFrame(all_results, columns=('group', 'class_name', 'f1'))
+    all_results.to_csv(os.path.join(output_directory, 
+                                    task_name, 
+                                    'metrics.csv'), index=None)
+
+    plt.figure()
+    sns.boxplot(data=all_results, x='group', y='f1')
+    plt.grid()
+    plt.xticks(rotation=45, ha='right')
+    plt.ylim([0, 1])
+    plt.title(task_name)
+    plt.savefig(os.path.join(output_directory, task_name, 'f1_metrics.jpg'), bbox_inches='tight')
+    plt.close()
+
+
+    plt.figure()
+    sns.boxplot(data=all_results, x='group', y='f1', hue='class_name')
+    plt.grid()
+    plt.xticks(rotation=45, ha='right')
+    plt.ylim([0, 1])
+    plt.title(task_name + '_class_names')
+    plt.savefig(os.path.join(output_directory, task_name, 'f1_metrics_classes.jpg'), bbox_inches='tight')
+    plt.close()
