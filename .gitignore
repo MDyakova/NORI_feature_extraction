@@ -172,3 +172,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# # Ignore everything in work_directory/train_directory/
+work_directory/train_directory/*
+work_directory/inference_directory/*
+
+# # But keep the train_directory itself
+# !work_directory/train_directory/

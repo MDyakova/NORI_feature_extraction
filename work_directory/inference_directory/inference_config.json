@@ -1,0 +1,17 @@
+{
+    "data_information": {
+        "data" : "work_directory/train_directory/outputs/slice_mouse_kidney",
+        "task_name": "slice_models"
+
+    },
+    "output_information": {
+        "output_folder" : "work_directory/inference_directory/outputs/slice_mouse_kidney"
+
+    },
+    "models_settings": {
+        "data_type": "tiles",
+        "tile_size" : 320,
+        "umap_type" : "train"
+    }
+
+}
