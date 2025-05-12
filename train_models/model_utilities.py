@@ -101,7 +101,7 @@ def train_process(model,
 
                 # Save the trained model
                 torch.save(model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}.pth'))
-                torch.save(model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}_{f1_scores}.pth'))
+                # torch.save(model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}_{f1_scores}.pth'))
     
     print(f'Best val f1: {best_f1:4f}')
     model.load_state_dict(best_model_wts)
