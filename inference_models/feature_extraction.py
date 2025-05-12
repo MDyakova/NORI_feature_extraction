@@ -147,7 +147,7 @@ if __name__ == "__main__":
                             output = model(image)
                             predictions = torch.argmax(output, dim=1)
                             probabilities = F.softmax(output, dim=1)
-                            pred_class = predict_classes_rev[predictions.tolist()[0]]
+                            pred_class_name = predict_classes_rev[predictions.tolist()[0]]
                             prob_class = probabilities.max().tolist()
                             # pred_class_real = class_names[pred_class]
                             class_index = list(class_names).index(class_name)
@@ -199,7 +199,7 @@ if __name__ == "__main__":
                             layer_output = layer_outputs[0]
                             embeddings.append([task_name, model_name.split('.')[0], class_name, set_type,
                                                 image_name, image_path, heatmap_path_full, heatmap_path_one,
-                                                pred_class, prob_class,
+                                                pred_class_name, prob_class,
                                                 list(layer_output.reshape(-1).cpu().numpy())])
 
                         else:
@@ -207,7 +207,7 @@ if __name__ == "__main__":
                             layer_output = layer_outputs[0]
                             embeddings.append([task_name, model_name.split('.')[0], class_name, set_type,
                                                 image_name, image_path, '', '',
-                                                pred_class, prob_class,
+                                                pred_class_name, prob_class,
                                                 list(layer_output.reshape(-1).cpu().numpy())])
         # Make Umap plot
         path_save_df = os.path.join(output_directory,

@@ -98,6 +98,10 @@ def train_process(model,
                 best_model_wts = model.state_dict()
                 best_report = report
                 best_cf_matrix = cf_matrix
+
+                # Save the trained model
+                torch.save(model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}.pth'))
+                torch.save(model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}_{f1_scores}.pth'))
     
     print(f'Best val f1: {best_f1:4f}')
     model.load_state_dict(best_model_wts)
@@ -188,8 +192,8 @@ def train_model(output_directory,
                                 val_samples,
                                 num_epochs=epoch_number)
 
-    # Save the trained model
-    torch.save(saved_model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}.pth'))
+    # # Save the trained model
+    # torch.save(saved_model.state_dict(), os.path.join(model_directory, model_name + f'_{task_name}.pth'))
 
     return saved_model
 
