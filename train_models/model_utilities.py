@@ -98,6 +98,10 @@ def train_process(model,
                 best_model_wts = model.state_dict()
                 best_report = report
                 best_cf_matrix = cf_matrix
+    
+    print(f'Best val f1: {best_f1:4f}')
+    model.load_state_dict(best_model_wts)
+    print(best_report)
 
     with open(os.path.join(model_directory, f'report_CNN_{task_name}.txt'), 'a') as f:
         f.write(model_name + '\n')

@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader
+import umap
 
 
 def transform_image(data_type, tile_size):
@@ -45,7 +46,7 @@ def transform_image(data_type, tile_size):
         ])
     return transform
 
-def make_folders(group, folder_name, class_name_real):
+def make_folders(folder_name, class_name_real, output_folder, task_name):
     """
     Make folders for output data
     """
@@ -94,7 +95,7 @@ def make_umap(embeddings, umap_save_path, umap_type):
     val_df.drop(columns=['embeddings'], inplace=True)
 
     val_embeddings = np.array([emb for emb in embeddings_df[embeddings_df['set_type']=='val']['embeddings'].values])
-    
+
     reducer = umap.UMAP(random_state=42)
     umap_embeddings = reducer.fit_transform(train_embeddings)
     umap_embeddings_val = reducer.transform(val_embeddings)
@@ -102,3 +103,50 @@ def make_umap(embeddings, umap_save_path, umap_type):
     val_df['umap2'] = umap_embeddings_val.T[1]
 
     val_df.to_csv(umap_save_path, index=False)
+
+def apply_gradcam(model, image_tensor, target_class, layer=3):
+    """Compute Grad-CAM for a specific target class."""
+    model.eval()
+
+    # Select last convolutional layer
+    if layer == 2:
+        target_layer = model.layer2[-1]
+    elif layer == 3:
+        target_layer = model.layer3[-1]
+    elif layer == 4:
+        target_layer = model.layer4[-1]
+
+    # Forward pass hook to store activations
+    activations = {}
+    def forward_hook(module, input, output):
+        activations["features"] = output
+    target_layer.register_forward_hook(forward_hook)
+
+    # Backward pass hook to store gradients
+    gradients = {}
+    def backward_hook(module, grad_in, grad_out):
+        gradients["values"] = grad_out[0]
+    target_layer.register_backward_hook(backward_hook)
+
+    # Forward pass
+    outputs = model(image_tensor)
+    class_score = outputs[:, target_class]  # Get score for target class
+
+    # Backward pass
+    model.zero_grad()
+    class_score.backward()
+
+    # Extract stored activations and gradients
+    feature_map = activations["features"].squeeze(0).cpu().detach().numpy()
+    grads = gradients["values"].squeeze(0).cpu().detach().numpy()
+
+    # Compute Grad-CAM heatmap
+    weights = np.mean(grads, axis=(1, 2))  # Global average pooling
+    cam = np.sum(weights[:, np.newaxis, np.newaxis] * feature_map, axis=0)
+    cam = np.maximum(cam, 0)  # ReLU
+
+    # Normalize heatmap
+    cam = (cam - np.min(cam)) / (np.max(cam) - np.min(cam))
+    # cam = cv2.resize(cam, (224, 224))
+
+    return cam
