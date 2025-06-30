@@ -1,12 +1,12 @@
 {
     "data_information": {
-        "nori_images" : "work_directory/train_directory/data/slice_mouse_kidney",
-        "layers" : {"protein":-2, "lipid":-1},
+        "nori_images" : "work_directory/train_directory/data/colon_cancer_14d",
+        "layers" : {"protein":0, "lipid":1},
         "sample_separator": "_"
 
     },
     "output_information": {
-        "output_folder" : "work_directory/train_directory/outputs/slice_mouse_kidney",
+        "output_folder" : "work_directory/train_directory/outputs/colon_cancer_14d",
         "task_name": "slice_models"
 
     },
