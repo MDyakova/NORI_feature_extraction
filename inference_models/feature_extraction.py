@@ -20,10 +20,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
+from scipy.ndimage import zoom
 import umap
 from utilities import (transform_image,
                         make_folders,
-                        make_umap)
+                        make_umap,
+                        apply_gradcam)
 
 if __name__ == "__main__":
     # Load config
@@ -46,27 +49,33 @@ if __name__ == "__main__":
     # Create train directories
     os.makedirs(output_directory, exist_ok=True)
 
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     # Only tiles
     fig, ax = plt.subplots()
     models_folder = os.path.join(data_directory, task_name, 'models')
     model_list = list(filter(lambda p: ('.pth' in p) & ('_' + task_name + '.' in p),
                             os.listdir(models_folder)))
 
-    image_folder = os.path.join('work_directory', 'train_directory', data_directory, task_name, 'tiles')
+    image_folder = os.path.join(data_directory, task_name, 'tiles')
     transform = transform_image(data_type, tile_size)
 
-    tables_folder = os.path.join('work_directory', 'train_directory', data_directory, task_name, 'tables')
+    tables_folder = os.path.join(data_directory, task_name, 'tables')
 
-    for model_name in tqdm_notebook(model_list[0:], desc='models'):
+    for model_name in model_list[0:]:
         folder_name = model_name.split('.')[0].replace('_' + task_name, '')
         samples_df = pd.read_csv(os.path.join(tables_folder, folder_name + '.csv'))
         embeddings = []
         prob_masks_dict = {}
         images_dict = {}
 
-        class_names = np.unique(samples_df['folder'])
+        class_names = np.sort(np.unique(samples_df['folder']))
         num_classes = len(class_names)
-        
+        predict_classes_rev = {}
+        for step, class_name in enumerate(class_names):
+            predict_classes_rev[step] = class_name
+       
         # Initialize the model
         model = models.resnet50(pretrained=False)
         model.fc = nn.Linear(model.fc.in_features, num_classes)
@@ -101,12 +110,12 @@ if __name__ == "__main__":
         # Register hooks for all layers at once
         hooks = {layer: layer_mapping[layer].register_forward_hook(get_hook_fn(layer)) for layer in layer_mapping}
 
-        for set_type in tqdm_notebook(['train', 'val'], desc='sets'):
-            for class_name in tqdm_notebook(class_names[group].keys(), desc='classes'):
+        for set_type in ['train', 'val']:
+            for class_name in class_names:
                 sample_names = pd.unique(samples_df[(samples_df['set_type']==set_type)
                                         & (samples_df['folder']==class_name)]['sample_name'])
 
-                make_folders(task_name, folder_name, class_name_real)
+                make_folders(folder_name, class_name, output_directory, task_name)
 
                 for sample_name in sample_names:
                     image_names = samples_df[(samples_df['set_type']==set_type)
@@ -115,8 +124,8 @@ if __name__ == "__main__":
                     # Change
                     image_names = [i.replace(sample_name + '_', '', 1) for i in image_names]
 
-                    for image_name in tqdm_notebook(image_names, desc='images'):
-                        image_path = os.path.join(data_folder,
+                    for image_name in image_names:
+                        image_path = os.path.join(image_folder,
                                                 sample_name,
                                                 image_name)
                         file_save_name = '_'.join(image_name.split('_')[:-2])
@@ -138,10 +147,10 @@ if __name__ == "__main__":
                             output = model(image)
                             predictions = torch.argmax(output, dim=1)
                             probabilities = F.softmax(output, dim=1)
-                            pred_class = predict_classes_rev[predictions.tolist()[0]]
+                            pred_class_name = predict_classes_rev[predictions.tolist()[0]]
                             prob_class = probabilities.max().tolist()
-                            pred_class_real = class_names[group][pred_class]
-                            class_index = list(predict_classes_rev.values()).index(class_name)
+                            # pred_class_real = class_names[pred_class]
+                            class_index = list(class_names).index(class_name)
                             class_prob = probabilities[0][class_index]
                         # Iterate over layers without if-statements in the loop
                         if set_type == 'val':
@@ -160,7 +169,7 @@ if __name__ == "__main__":
                                 heatmap_img = plt.imshow(heatmap_zoom, cmap='jet', alpha=0.4)
 
                                 path_save_heatmaps = os.path.join(
-                                                                output_folder,
+                                                                output_directory,
                                                                 task_name,
                                                                 'heatmaps',
                                                                 folder_name,
@@ -177,31 +186,31 @@ if __name__ == "__main__":
                                 colorbar.remove()  # Remove colorbar after saving
                                 ax.clear()
 
-                                # One-color heatmap overlay (masked)
-                                ax.imshow(image_save.convert('L'), cmap='gray')
-                                masked_heatmap_img = ax.imshow(masked_heatmap, cmap='Reds', alpha=0.7)
-                                colorbar = fig.colorbar(masked_heatmap_img, ax=ax)  # Store colorbar reference
+                                # # One-color heatmap overlay (masked)
+                                # ax.imshow(image_save.convert('L'), cmap='gray')
+                                # masked_heatmap_img = ax.imshow(masked_heatmap, cmap='Reds', alpha=0.7)
+                                # colorbar = fig.colorbar(masked_heatmap_img, ax=ax)  # Store colorbar reference
                                 heatmap_path_one = os.path.join(path_save_heatmaps, 'one_color', image_name)
-                                fig.savefig(heatmap_path_one, bbox_inches='tight')
-                                colorbar.remove()  # Remove colorbar after saving
-                                ax.clear()
+                                # fig.savefig(heatmap_path_one, bbox_inches='tight')
+                                # colorbar.remove()  # Remove colorbar after saving
+                                # ax.clear()
 
                             # Umap plot
                             layer_output = layer_outputs[0]
-                            embeddings.append([group, model_name.split('.')[0], class_name_real, set_type,
+                            embeddings.append([task_name, model_name.split('.')[0], class_name, set_type,
                                                 image_name, image_path, heatmap_path_full, heatmap_path_one,
-                                                pred_class_real, prob_class,
+                                                pred_class_name, prob_class,
                                                 list(layer_output.reshape(-1).cpu().numpy())])
 
                         else:
                             # Umap plot
                             layer_output = layer_outputs[0]
-                            embeddings.append([group, model_name.split('.')[0], class_name_real, set_type,
+                            embeddings.append([task_name, model_name.split('.')[0], class_name, set_type,
                                                 image_name, image_path, '', '',
-                                                pred_class_real, prob_class,
+                                                pred_class_name, prob_class,
                                                 list(layer_output.reshape(-1).cpu().numpy())])
         # Make Umap plot
-        path_save_df = os.path.join(output_folder,
+        path_save_df = os.path.join(output_directory,
                                     task_name,
                                     'umap')
         umap_save_path = os.path.join(path_save_df, model_name.replace('.pth', '.csv'))
